@@ -132,44 +132,6 @@ $app->get('/ads', function (ServerRequestInterface $request, ResponseInterface $
 	return render($response, 'ads', ['ads' => $ads]);
 });
 
-// Create Ad (GET)
-$app->get('/create-ad', function ($request, $response) {
-	if (!isset($_SESSION['dealer'])) {
-		$_SESSION['show_modal'] = 'login';
-		return $response->withHeader('Location', '/')->withStatus(302);
-	}
-	return render($response, 'create_ad');
-});
-
-// Create Ad (POST)
-$app->post('/create-ad', function ($request, $response) {
-	if (!isset($_SESSION['dealer'])) {
-		$_SESSION['show_modal'] = 'login';
-		return $response->withHeader('Location', '/')->withStatus(302);
-	}
-
-	$params = (array)$request->getParsedBody();
-	$title = trim($params['title']);
-	$description = trim($params['description']);
-	$price = (float)$params['price'];
-	$location = trim($params['location']);
-
-	// Validation
-	if (empty($title) || empty($description) || empty($location) || $price <= 0) {
-		$_SESSION['error'] = 'All fields are required and price must be positive.';
-		return $response->withHeader('Location', '/create-ad')->withStatus(302);
-	}
-
-	$dealerId = $_SESSION['dealer']['id'];
-	$pdo = $this->get('pdo');
-
-	$stmt = $pdo->prepare("INSERT INTO ads (dealer_id, title, description, price, location, created_at) VALUES (?, ?, ?, ?, ?, NOW())");
-	$stmt->execute([$dealerId, $title, $description, $price, $location]);
-
-	return $response->withHeader('Location', '/ads')->withStatus(302);
-});
-
-
 $app->get('/profile', function (ServerRequestInterface $request, ResponseInterface $response) {
 	if (!isset($_SESSION['dealer'])) {
 		$_SESSION['show_modal'] = 'login';
@@ -297,3 +259,130 @@ $app->post('/profile/update', function ($request, $response) {
 	return $response->withHeader('Location', '/profile')->withStatus(302);
 });
 
+// Create Ad (GET)
+$app->get('/create-ad', function ($request, $response) {
+	if (!isset($_SESSION['dealer'])) {
+		$_SESSION['show_modal'] = 'login';
+		return $response->withHeader('Location', '/')->withStatus(302);
+	}
+	return render($response, 'create_ad');
+});
+
+// Create Ad (POST)
+$app->post('/create-ad', function ($request, $response) {
+	session_start();
+	if (!isset($_SESSION['dealer'])) {
+		$_SESSION['show_modal'] = 'login';
+		return $response->withHeader('Location', '/')->withStatus(302);
+	}
+
+	$params = $request->getParsedBody();
+	$files = $request->getUploadedFiles();
+	$dealerId = $_SESSION['dealer']['id'];
+
+	$pdo = $this->get('pdo');
+	$pdo->beginTransaction();
+	try {
+		// Properties
+		$stmt = $pdo->prepare("INSERT INTO properties (dealer_id, transaction_type, property_type, availability, ownership, transaction_status, title, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+		$stmt->execute([
+			$dealerId,
+			$params['transaction_type'],
+			$params['property_type'],
+			$params['availability'],
+			$params['ownership'],
+			$params['transaction_status'] ?? 'Resale',
+			$params['title'],
+			$params['description']
+		]);
+		$propertyId = $pdo->lastInsertId();
+
+		// Location
+		$stmt = $pdo->prepare("INSERT INTO property_location (property_id, city, locality, sub_locality, apartment_society, house_no) VALUES (?, ?, ?, ?, ?, ?)");
+		$stmt->execute([
+			$propertyId,
+			$params['city'],
+			$params['locality'],
+			$params['sub_locality'],
+			$params['apartment_society'],
+			$params['house_no']
+		]);
+
+		// Area
+		$stmt = $pdo->prepare("INSERT INTO property_area_details (property_id, carpet_area, builtup_area, super_builtup_area, area_unit) VALUES (?, ?, ?, ?, ?)");
+		$stmt->execute([
+			$propertyId,
+			$params['carpet_area'],
+			$params['builtup_area'],
+			$params['super_builtup_area'],
+			$params['area_unit']
+		]);
+
+		// Rooms
+		$stmt = $pdo->prepare("INSERT INTO property_room_details (property_id, bedrooms, bathrooms, balconies, furnishing, parking, facing, open_sides) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+		$stmt->execute([
+			$propertyId,
+			$params['bedrooms'],
+			$params['bathrooms'],
+			$params['balconies'],
+			$params['furnishing'],
+			$params['parking'],
+			$params['facing'],
+			$params['open_sides']
+		]);
+
+		// Floors
+		$stmt = $pdo->prepare("INSERT INTO property_floor_details (property_id, total_floors, property_on_floor) VALUES (?, ?, ?)");
+		$stmt->execute([
+			$propertyId,
+			$params['total_floors'],
+			$params['property_on_floor']
+		]);
+
+		// Pricing
+		$stmt = $pdo->prepare("INSERT INTO property_pricing_details (property_id, expected_price, price_per_sqft, price_in_words, is_inclusive_price, tax_excluded, price_negotiable, additional_pricing) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+		$stmt->execute([
+			$propertyId,
+			$params['expected_price'],
+			$params['price_per_sqft'],
+			$params['price_in_words'],
+			isset($params['is_inclusive_price']) ? 1 : 0,
+			isset($params['tax_excluded']) ? 1 : 0,
+			isset($params['price_negotiable']) ? 1 : 0,
+			json_encode([
+				'maintenance' => $params['maintenance'] ?? null,
+				'expected_rental' => $params['expected_rental'] ?? null,
+				'booking_amount' => $params['booking_amount'] ?? null
+			])
+		]);
+
+		// Features
+		$stmt = $pdo->prepare("INSERT INTO property_features (property_id, feature, authority_approved, possession) VALUES (?, ?, ?, ?)");
+		$stmt->execute([
+			$propertyId,
+			$params['feature'],
+			$params['authority_approved'],
+			$params['possession']
+		]);
+
+		// Media
+		if (!empty($files['media']) && is_array($files['media'])) {
+			foreach ($files['media'] as $uploadedFile) {
+				if ($uploadedFile->getError() === UPLOAD_ERR_OK) {
+					$filename = uniqid() . '_' . $uploadedFile->getClientFilename();
+					$uploadedFile->moveTo(__DIR__ . '/../public/uploads/' . $filename);
+					$pdo->prepare("INSERT INTO property_media (property_id, media_type, file_path) VALUES (?, ?, ?)")
+						->execute([$propertyId, explode('/', $uploadedFile->getClientMediaType())[0], '/uploads/' . $filename]);
+				}
+			}
+		}
+
+		$pdo->commit();
+		$_SESSION['success'] = 'Property added successfully';
+		return $response->withHeader('Location', '/ads')->withStatus(302);
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        $_SESSION['error'] = 'Failed to create property.';
+        return $response->withHeader('Location', '/create-ad')->withStatus(302);
+    }
+});

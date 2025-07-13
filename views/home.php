@@ -106,9 +106,9 @@
 
 		</div>
 
-		<button class="mt-10 bg-green-500 hover:bg-green-600 text-white font-medium py-3 px-8 rounded">
-			Start Posting Your Property
-		</button>
+		<a href="/create-ad" class="mt-10 bg-green-500 hover:bg-green-600 text-white font-medium py-3 px-8 rounded">
+			Post Your Property Today
+		</a>
 
 	</div>
 </section>

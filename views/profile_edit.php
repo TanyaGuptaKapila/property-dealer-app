@@ -1,50 +1,98 @@
-<div class="max-w-3xl mx-auto mt-10 bg-white shadow rounded-lg p-8">
-	<h2 class="text-2xl font-bold mb-6 text-[#6c63ff]">Edit Profile</h2>
+<div class="max-w-3xl mx-auto mt-10 bg-white p-8 rounded shadow">
+	<h2 class="text-2xl font-bold text-[#6c63ff] mb-6">Edit Profile</h2>
 
-	<form method="POST" action="/profile/update" enctype="multipart/form-data" class="space-y-4">
-
-		<!-- Profile Picture Upload -->
-		<div class="flex items-center space-x-4">
-			<div class="w-20 h-20 rounded-full bg-gray-200 overflow-hidden">
-				<img id="profilePreview"
-					 src="<?= htmlspecialchars($dealer['profile_picture'] ?? '/assets/default-profile.png') ?>"
-					 alt="Profile Picture"
-					 class="w-20 h-20 object-cover">
+	<form method="POST" action="/profile/update" enctype="multipart/form-data" class="space-y-6">
+		<div class="flex items-center space-x-6">
+			<div class="shrink-0">
+				<img id="profileImagePreview" class="h-24 w-24 object-cover rounded-full border"
+					 src="<?= htmlspecialchars($dealer['profile_picture'] ?? '/assets/undraw_profile-image_2hi8.svg') ?>" alt="Profile Picture" />
 			</div>
-			<input type="file" name="profile_picture" id="profilePictureInput" accept="image/*" class="text-sm">
+			<label class="block">
+				<span class="sr-only">Choose profile photo</span>
+				<input type="file" name="profile_picture" id="profilePictureInput" accept="image/*"
+					   class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0
+                              file:text-sm file:font-semibold file:bg-[#6c63ff] file:text-white hover:file:bg-[#5a55e5]" />
+			</label>
 		</div>
-		<script>
-			document.getElementById('profilePictureInput').addEventListener('change', function(event) {
-				const file = event.target.files[0];
-				if (file) {
-					const preview = document.getElementById('profilePreview');
-					preview.src = URL.createObjectURL(file);
-				}
-			});
-		</script>
 
-		<input type="text" name="name" value="<?= htmlspecialchars($dealer['name'] ?? '') ?>" placeholder="Full Name" class="w-full border rounded px-3 py-2">
+		<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+			<div>
+				<label class="block text-sm mb-1">Name</label>
+				<input type="text" name="name" required class="w-full border rounded px-3 py-2"
+					   value="<?= htmlspecialchars($dealer['name'] ?? '') ?>" />
+			</div>
+			<div>
+				<label class="block text-sm mb-1">Email (read-only)</label>
+				<input type="email" readonly disabled class="w-full bg-gray-100 border rounded px-3 py-2"
+					   value="<?= htmlspecialchars($dealer['email'] ?? '') ?>" />
+			</div>
+			<div>
+				<label class="block text-sm mb-1">Phone</label>
+				<input type="text" name="phone" class="w-full border rounded px-3 py-2"
+					   value="<?= htmlspecialchars($dealer['phone'] ?? '') ?>" placeholder="+491234567890" />
+			</div>
+			<div>
+				<label class="block text-sm mb-1">Agency Name</label>
+				<input type="text" name="agency_name" class="w-full border rounded px-3 py-2"
+					   value="<?= htmlspecialchars($dealer['agency_name'] ?? '') ?>" />
+			</div>
+			<div>
+				<label class="block text-sm mb-1">Location (City)</label>
+				<input type="text" name="location" class="w-full border rounded px-3 py-2"
+					   value="<?= htmlspecialchars($dealer['location'] ?? '') ?>" />
+			</div>
+			<div>
+				<label class="block text-sm mb-1">State</label>
+				<input type="text" name="state" class="w-full border rounded px-3 py-2"
+					   value="<?= htmlspecialchars($dealer['state'] ?? '') ?>" />
+			</div>
+			<div>
+				<label class="block text-sm mb-1">Country</label>
+				<input type="text" name="country" class="w-full border rounded px-3 py-2"
+					   value="<?= htmlspecialchars($dealer['country'] ?? '') ?>" />
+			</div>
+			<div>
+				<label class="block text-sm mb-1">Office Address</label>
+				<input type="text" name="office_address" class="w-full border rounded px-3 py-2"
+					   value="<?= htmlspecialchars($dealer['office_address'] ?? '') ?>" />
+			</div>
+		</div>
 
-		<input type="text" name="phone" value="<?= htmlspecialchars($dealer['phone'] ?? '') ?>" placeholder="Phone (with country code)" class="w-full border rounded px-3 py-2">
+		<h3 class="text-lg font-semibold text-gray-700 mt-6">Social Links</h3>
+		<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+			<div>
+				<label class="block text-sm mb-1">Instagram</label>
+				<input type="text" name="instagram_link" class="w-full border rounded px-3 py-2"
+					   value="<?= htmlspecialchars($dealer['instagram_link'] ?? '') ?>" />
+			</div>
+			<div>
+				<label class="block text-sm mb-1">Facebook</label>
+				<input type="text" name="facebook_link" class="w-full border rounded px-3 py-2"
+					   value="<?= htmlspecialchars($dealer['facebook_link'] ?? '') ?>" />
+			</div>
+			<div>
+				<label class="block text-sm mb-1">YouTube</label>
+				<input type="text" name="youtube_link" class="w-full border rounded px-3 py-2"
+					   value="<?= htmlspecialchars($dealer['youtube_link'] ?? '') ?>" />
+			</div>
+			<div>
+				<label class="block text-sm mb-1">WhatsApp Number</label>
+				<input type="text" name="whatsapp_number" class="w-full border rounded px-3 py-2"
+					   value="<?= htmlspecialchars($dealer['whatsapp_number'] ?? '') ?>" placeholder="+491234567890" />
+			</div>
+		</div>
 
-		<input type="text" name="agency_name" value="<?= htmlspecialchars($dealer['agency_name'] ?? '') ?>" placeholder="Agency Name" class="w-full border rounded px-3 py-2">
-
-		<input type="text" name="location" value="<?= htmlspecialchars($dealer['location'] ?? '') ?>" placeholder="Location / City" class="w-full border rounded px-3 py-2">
-
-		<input type="text" name="state" value="<?= htmlspecialchars($dealer['state'] ?? '') ?>" placeholder="State" class="w-full border rounded px-3 py-2">
-
-		<input type="text" name="country" value="<?= htmlspecialchars($dealer['country'] ?? '') ?>" placeholder="Country" class="w-full border rounded px-3 py-2">
-
-		<input type="text" name="office_address" value="<?= htmlspecialchars($dealer['office_address'] ?? '') ?>" placeholder="Office Address (Street, etc.)" class="w-full border rounded px-3 py-2">
-
-		<input type="url" name="instagram_link" value="<?= htmlspecialchars($dealer['instagram_link'] ?? '') ?>" placeholder="Instagram Profile URL" class="w-full border rounded px-3 py-2">
-
-		<input type="url" name="facebook_link" value="<?= htmlspecialchars($dealer['facebook_link'] ?? '') ?>" placeholder="Facebook Profile URL" class="w-full border rounded px-3 py-2">
-
-		<input type="url" name="youtube_link" value="<?= htmlspecialchars($dealer['youtube_link'] ?? '') ?>" placeholder="YouTube Channel URL" class="w-full border rounded px-3 py-2">
-
-		<input type="text" name="whatsapp_number" value="<?= htmlspecialchars($dealer['whatsapp_number'] ?? '') ?>" placeholder="WhatsApp Number (with country code)" class="w-full border rounded px-3 py-2">
-
-		<button type="submit" class="w-full bg-[#6c63ff] text-white py-2 rounded hover:bg-[#554dd3]">Save Changes</button>
+		<button type="submit" class="w-full bg-[#6c63ff] text-white py-2 rounded hover:bg-[#5a55e5]">Save Changes</button>
 	</form>
 </div>
+
+<script>
+	const input = document.getElementById('profilePictureInput');
+	const preview = document.getElementById('profileImagePreview');
+	input.addEventListener('change', (e) => {
+		const file = e.target.files[0];
+		if (file) {
+			preview.src = URL.createObjectURL(file);
+		}
+	});
+</script>

@@ -1,5 +1,18 @@
 <div class="max-w-4xl mx-auto mt-10 space-y-10">
-
+<?php if (!empty($_SESSION['error'])): ?>
+	<div class="bg-red-100 text-red-700 p-3 rounded mb-4">
+		<?= htmlspecialchars($_SESSION['error']) ?>
+	</div>
+	<?php unset($_SESSION['error']); ?>
+<?php endif; ?>
+<?php if (!empty($_SESSION['success'])): ?>
+	<div class="bg-green-100 text-green-700 p-4 rounded mb-4">
+		<?= htmlspecialchars($_SESSION['success']) ?>
+	</div>
+	<?php unset($_SESSION['success']); ?>
+<?php endif; ?>
+</div>
+<div class="max-w-4xl mx-auto mt-10 space-y-10">
 	<!-- Profile Overview Section -->
 	<div class="flex flex-col md:flex-row bg-white shadow rounded-lg overflow-hidden">
 		<div class="md:w-1/3 bg-[#6c63ff] flex items-center justify-center p-8">
@@ -22,20 +35,6 @@
 		</div>
 		<div class="md:w-2/3 p-8">
 			<h2 class="text-2xl font-bold text-gray-800 mb-4">Change Password</h2>
-			<?php if (!empty($_SESSION['error'])): ?>
-				<div class="bg-red-100 text-red-700 p-3 rounded mb-4">
-					<?= htmlspecialchars($_SESSION['error']) ?>
-				</div>
-				<?php unset($_SESSION['error']); ?>
-			<?php endif; ?>
-			<?php if (!empty($_SESSION['success'])): ?>
-				<div class="bg-green-100 text-green-700 p-4 rounded mb-4">
-					<?= htmlspecialchars($_SESSION['success']) ?>
-				</div>
-				<?php unset($_SESSION['success']); ?>
-			<?php endif; ?>
-
-
 			<form method="POST" action="/profile/password" class="space-y-4">
 				<input type="password" name="current_password" placeholder="Current Password" required class="w-full border rounded px-3 py-2">
 				<input type="password" name="new_password" placeholder="New Password (Min 9, 1 letter, 1 number)" required
