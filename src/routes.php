@@ -33,11 +33,6 @@ $app->get('/about', function (ServerRequestInterface $request, ResponseInterface
 	return render($response, 'about');
 });
 
-// Login (GET)
-$app->get('/login', function (ServerRequestInterface $request, ResponseInterface $response) {
-	return render($response, 'login');
-});
-
 // Login (POST)
 $app->post('/login', function ($request, $response) {
 	session_start();
@@ -46,24 +41,22 @@ $app->post('/login', function ($request, $response) {
 	$email = $params['email'] ?? '';
 	$password = $params['password'] ?? '';
 
-	$pdo = $this->get('pdo');
+	$_SESSION['form_data'] = $params;
 
+	$pdo = $this->get('pdo');
 	$stmt = $pdo->prepare("SELECT * FROM dealers WHERE email = ?");
 	$stmt->execute([$email]);
 	$user = $stmt->fetch(PDO::FETCH_ASSOC);
 
 	if ($user && password_verify($password, $user['password'])) {
+		unset($_SESSION['form_data']);
 		$_SESSION['dealer'] = $user;
-		return $response->withHeader('Location', '/ads')->withStatus(302);
+		return $response->withHeader('Location', '/')->withStatus(302);
 	} else {
 		$_SESSION['error'] = 'Invalid email or password';
-		return $response->withHeader('Location', '/login')->withStatus(302);
+		$_SESSION['show_modal'] = 'login';
+		return $response->withHeader('Location', '/')->withStatus(302);
 	}
-});
-
-// Register (GET)
-$app->get('/register', function (ServerRequestInterface $request, ResponseInterface $response) {
-	return render($response, 'register');
 });
 
 // Register (POST)
@@ -71,12 +64,12 @@ $app->post('/register', function (ServerRequestInterface $request, ResponseInter
 	session_start();
 	$params = (array)$request->getParsedBody();
 
-	$name        = $params['name'];
-	$email       = $params['email'];
-	$password    = password_hash($params['password'], PASSWORD_DEFAULT);
-	$phone       = $params['phone'];
-	$agency_name = $params['agency_name'];
-	$location    = $params['location'];
+	$name        = $params['name'] ?? '';
+	$email       = $params['email'] ?? '';
+	$passwordRaw = $params['password'] ?? '';
+	$phone       = $params['phone'] ?? '';
+	$agency_name = $params['agency_name'] ?? '';
+	$location    = $params['location'] ?? '';
 	$created_at  = date('Y-m-d H:i:s');
 
 	$pdo = $this->get('pdo');
@@ -84,19 +77,21 @@ $app->post('/register', function (ServerRequestInterface $request, ResponseInter
 	// Validate phone
 	if (!preg_match('/^\+\d{10,15}$/', $phone)) {
 		$_SESSION['error'] = 'Phone must include country code, e.g., +919876543210';
-		return $response->withHeader('Location', '/register')->withStatus(302);
+		$_SESSION['show_modal'] = 'register';
+		return $response->withHeader('Location', '/')->withStatus(302);
 	}
 
 	// Validate password
 	if (
-		strlen($params['password']) < 8 ||
-		!preg_match('/[A-Z]/', $params['password']) ||
-		!preg_match('/[a-z]/', $params['password']) ||
-		!preg_match('/[0-9]/', $params['password']) ||
-		!preg_match('/[\W]/', $params['password'])
+		strlen($passwordRaw) < 8 ||
+		!preg_match('/[A-Z]/', $passwordRaw) ||
+		!preg_match('/[a-z]/', $passwordRaw) ||
+		!preg_match('/[0-9]/', $passwordRaw) ||
+		!preg_match('/[\W]/', $passwordRaw)
 	) {
 		$_SESSION['error'] = 'Password must be at least 8 characters and include uppercase, lowercase, number, and special character.';
-		return $response->withHeader('Location', '/register')->withStatus(302);
+		$_SESSION['show_modal'] = 'register';
+		return $response->withHeader('Location', '/')->withStatus(302);
 	}
 
 	// Check if email exists
@@ -104,16 +99,19 @@ $app->post('/register', function (ServerRequestInterface $request, ResponseInter
 	$stmt->execute([$email]);
 	if ($stmt->fetch()) {
 		$_SESSION['error'] = 'Email already registered';
-		return $response->withHeader('Location', '/register')->withStatus(302);
+		$_SESSION['show_modal'] = 'register';
+		return $response->withHeader('Location', '/')->withStatus(302);
 	}
 
+	$password = password_hash($passwordRaw, PASSWORD_DEFAULT);
 	$stmt = $pdo->prepare("INSERT INTO dealers (name, email, password, phone, agency_name, location, created_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?)");
+        VALUES (?, ?, ?, ?, ?, ?, ?)");
 	$stmt->execute([$name, $email, $password, $phone, $agency_name, $location, $created_at]);
 
 	$_SESSION['dealer'] = ['name' => $name, 'email' => $email];
+	unset($_SESSION['show_modal']);
 
-	return $response->withHeader('Location', '/ads')->withStatus(302);
+	return $response->withHeader('Location', '/')->withStatus(302);
 });
 
 // Logout
@@ -125,7 +123,8 @@ $app->get('/logout', function (ServerRequestInterface $request, ResponseInterfac
 // Ads (listings)
 $app->get('/ads', function (ServerRequestInterface $request, ResponseInterface $response) {
 	if (!isset($_SESSION['dealer'])) {
-		return $response->withHeader('Location', '/login')->withStatus(302);
+		$_SESSION['show_modal'] = 'login';
+		return $response->withHeader('Location', '/')->withStatus(302);
 	}
 	$pdo = $this->get('pdo');
 	$stmt = $pdo->query("SELECT * FROM ads ORDER BY created_at DESC");
@@ -136,7 +135,8 @@ $app->get('/ads', function (ServerRequestInterface $request, ResponseInterface $
 // Create Ad (GET)
 $app->get('/create-ad', function ($request, $response) {
 	if (!isset($_SESSION['dealer'])) {
-		return $response->withHeader('Location', '/login')->withStatus(302);
+		$_SESSION['show_modal'] = 'login';
+		return $response->withHeader('Location', '/')->withStatus(302);
 	}
 	return render($response, 'create_ad');
 });
@@ -144,7 +144,8 @@ $app->get('/create-ad', function ($request, $response) {
 // Create Ad (POST)
 $app->post('/create-ad', function ($request, $response) {
 	if (!isset($_SESSION['dealer'])) {
-		return $response->withHeader('Location', '/login')->withStatus(302);
+		$_SESSION['show_modal'] = 'login';
+		return $response->withHeader('Location', '/')->withStatus(302);
 	}
 
 	$params = (array)$request->getParsedBody();
@@ -171,48 +172,17 @@ $app->post('/create-ad', function ($request, $response) {
 
 $app->get('/profile', function (ServerRequestInterface $request, ResponseInterface $response) {
 	if (!isset($_SESSION['dealer'])) {
-		return $response->withHeader('Location', '/login')->withStatus(302);
+		$_SESSION['show_modal'] = 'login';
+		return $response->withHeader('Location', '/')->withStatus(302);
 	}
 	return render($response, 'profile', ['dealer' => $_SESSION['dealer']]);
-});
-
-$app->post('/profile/update', function (ServerRequestInterface $request, ResponseInterface $response) {
-	session_start();
-	if (!isset($_SESSION['dealer'])) {
-		return $response->withHeader('Location', '/login')->withStatus(302);
-	}
-
-	$params = (array)$request->getParsedBody();
-	$pdo    = $this->get('pdo');
-	$dealer = $_SESSION['dealer'];
-
-	if (!preg_match('/^\+\d{10,15}$/', $params['phone'])) {
-		$_SESSION['error'] = 'Phone must include country code (e.g., +919876543210)';
-		return $response->withHeader('Location', '/profile')->withStatus(302);
-	}
-
-	$stmt = $pdo->prepare("UPDATE dealers SET name = ?, phone = ?, agency_name = ?, location = ? WHERE id = ?");
-	$stmt->execute([
-		$params['name'],
-		$params['phone'],
-		$params['agency_name'],
-		$params['location'],
-		$dealer['id']
-	]);
-
-	// Refresh session
-	$stmt = $pdo->prepare("SELECT * FROM dealers WHERE id = ?");
-	$stmt->execute([$dealer['id']]);
-	$_SESSION['dealer'] = $stmt->fetch(PDO::FETCH_ASSOC);
-
-	$_SESSION['success'] = 'Profile updated successfully';
-	return $response->withHeader('Location', '/profile')->withStatus(302);
 });
 
 $app->post('/profile/password', function (ServerRequestInterface $request, ResponseInterface $response) {
 	session_start();
 	if (!isset($_SESSION['dealer'])) {
-		return $response->withHeader('Location', '/login')->withStatus(302);
+		$_SESSION['show_modal'] = 'login';
+		return $response->withHeader('Location', '/')->withStatus(302);
 	}
 
 	$params = (array)$request->getParsedBody();
@@ -239,6 +209,11 @@ $app->post('/profile/password', function (ServerRequestInterface $request, Respo
 		return $response->withHeader('Location', '/profile')->withStatus(302);
 	}
 
+	if (password_verify($params['new_password'], $dealer['password'])) {
+		$_SESSION['error'] = 'New password cannot be the same as the current password';
+		return $response->withHeader('Location', '/profile')->withStatus(302);
+	}
+
 	if ($params['new_password'] !== $params['confirm_password']) {
 		$_SESSION['error'] = 'New passwords do not match';
 		return $response->withHeader('Location', '/profile')->withStatus(302);
@@ -248,6 +223,77 @@ $app->post('/profile/password', function (ServerRequestInterface $request, Respo
 	$pdo->prepare("UPDATE dealers SET password = ? WHERE id = ?")->execute([$newHash, $dealer['id']]);
 
 	$_SESSION['success'] = 'Password changed successfully';
+	return $response->withHeader('Location', '/profile')->withStatus(302);
+});
+
+$app->get('/profile/edit', function ($request, $response) {
+	if (!isset($_SESSION['dealer'])) {
+		return $response->withHeader('Location', '/login')->withStatus(302);
+	}
+	return render($response, 'profile_edit', ['dealer' => $_SESSION['dealer']]);
+});
+
+$app->post('/profile/update', function ($request, $response) {
+	session_start();
+	if (!isset($_SESSION['dealer'])) {
+		$_SESSION['show_modal'] = 'login';
+		return $response->withHeader('Location', '/')->withStatus(302);
+	}
+
+	$params = $request->getParsedBody();
+	$files = $request->getUploadedFiles();
+	$dealer = $_SESSION['dealer'];
+
+	$pdo = $this->get('pdo');
+
+	// Handle profile picture upload if provided
+	$profilePicturePath = $dealer['profile_picture'] ?? null;
+	if (!empty($files['profile_picture']) && $files['profile_picture']->getError() === UPLOAD_ERR_OK) {
+		$uploadedFile = $files['profile_picture'];
+		$filename = uniqid() . '_' . $uploadedFile->getClientFilename();
+		$uploadPath = __DIR__ . '/../public/uploads/' . $filename;
+		$uploadedFile->moveTo($uploadPath);
+		$profilePicturePath = '/uploads/' . $filename;
+	}
+
+	$stmt = $pdo->prepare("
+        UPDATE dealers SET 
+            name = ?, 
+            phone = ?, 
+            agency_name = ?, 
+            location = ?, 
+            state = ?, 
+            country = ?, 
+            office_address = ?, 
+            instagram_link = ?, 
+            facebook_link = ?, 
+            youtube_link = ?, 
+            whatsapp_number = ?, 
+            profile_picture = ?
+        WHERE id = ?
+    ");
+	$stmt->execute([
+		$params['name'] ?? '',
+		$params['phone'] ?? '',
+		$params['agency_name'] ?? '',
+		$params['location'] ?? '',
+		$params['state'] ?? '',
+		$params['country'] ?? '',
+		$params['office_address'] ?? '',
+		$params['instagram_link'] ?? '',
+		$params['facebook_link'] ?? '',
+		$params['youtube_link'] ?? '',
+		$params['whatsapp_number'] ?? '',
+		$profilePicturePath,
+		$dealer['id']
+	]);
+
+	// Refresh session with updated dealer data
+	$stmt = $pdo->prepare("SELECT * FROM dealers WHERE id = ?");
+	$stmt->execute([$dealer['id']]);
+	$_SESSION['dealer'] = $stmt->fetch(PDO::FETCH_ASSOC);
+
+	$_SESSION['success'] = 'Profile updated successfully';
 	return $response->withHeader('Location', '/profile')->withStatus(302);
 });
 

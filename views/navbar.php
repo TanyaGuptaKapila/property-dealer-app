@@ -1,44 +1,75 @@
 <nav class="bg-white shadow p-4 flex justify-between items-center">
-	<!-- Left side: Logo + Nav Links -->
 	<div class="flex items-center space-x-6">
-		<a href="/" class="text-xl font-bold text-green-600">Estate Link</a>
-		<a href="/create-ad" class="text-gray-700 hover:text-green-600">Post Ad</a>
-		<a href="/about" class="text-gray-700 hover:text-green-600">About</a>
+		<a href="/" class="text-xl font-bold text-[#6c63ff]">Estate Link</a>
+		<a href="/create-ad" class="text-gray-700 hover:text-green-600">Post Property</a>
+		<a href="/about" class="text-gray-700 hover:text-green-600">About Us</a>
 	</div>
-	<div class="space-x-4 flex items-center relative">
+
+	<div class="flex items-center space-x-6 relative">
 		<?php if (!empty($_SESSION['dealer'])): ?>
+			<!-- Contact Icon -->
 			<div class="relative">
-				<button id="userDropdownButton" class="text-gray-700 hover:text-green-600 focus:outline-none">
-					<?= htmlspecialchars($_SESSION['dealer']['name']) ?> ▼
+				<button id="contactDropdownButton" class="focus:outline-none">
+					<i class="fas fa-headset text-2xl text-[#6c63ff]"></i>
+				</button>
+				<div id="contactDropdownMenu" class="absolute right-0 mt-2 w-56 bg-white border rounded shadow-lg z-10 hidden">
+					<div class="p-4 text-gray-700 text-sm">
+						<strong>Contact Us</strong><br>
+						Mon–Sat: 9am–6pm<br>
+						Toll-Free: 1800-123-4567<br>
+						Intl: +91-98765-43210
+					</div>
+				</div>
+			</div>
+
+			<!-- User Icon with dropdown -->
+			<div class="relative">
+				<button id="userDropdownButton" class="focus:outline-none flex items-center space-x-1">
+					<i class="fas fa-user-circle text-2xl text-[#6c63ff]"></i>
 				</button>
 				<div id="userDropdownMenu" class="absolute right-0 mt-2 w-40 bg-white border rounded shadow-lg z-10 hidden">
-					<a href="/profile" class="block px-4 py-2 hover:bg-gray-100">My Profile</a>
-					<a href="/logout" class="block px-4 py-2 hover:bg-gray-100">Logout</a>
+					<a href="/profile" class="block px-4 py-2 hover:bg-gray-100 flex items-center space-x-2">
+						<i class="fas fa-user text-gray-500"></i>
+						<span>My Profile</span>
+					</a>
+					<a href="/logout" class="block px-4 py-2 hover:bg-gray-100 flex items-center space-x-2">
+						<i class="fas fa-sign-out-alt text-gray-500"></i>
+						<span>Logout</span>
+					</a>
 				</div>
 			</div>
 		<?php else: ?>
-			<a href="/login" class="text-gray-700 hover:text-green-600">Login</a>
-			<a href="/register" class="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600">Register</a>
+			<button id="loginRegisterBtn" class="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600">
+				Login / Register
+			</button>
 		<?php endif; ?>
 	</div>
 </nav>
 
 <script>
-	// Toggle dropdown visibility
 	document.addEventListener('DOMContentLoaded', () => {
-		const button = document.getElementById('userDropdownButton');
-		const menu = document.getElementById('userDropdownMenu');
+		const userBtn = document.getElementById('userDropdownButton');
+		const userMenu = document.getElementById('userDropdownMenu');
+		const contactBtn = document.getElementById('contactDropdownButton');
+		const contactMenu = document.getElementById('contactDropdownMenu');
 
-		if (button && menu) {
-			button.addEventListener('click', (e) => {
-				e.stopPropagation(); // Prevent click from bubbling up
-				menu.classList.toggle('hidden');
-			});
-
-			// Hide dropdown on click outside
-			document.addEventListener('click', () => {
-				menu.classList.add('hidden');
+		if (userBtn && userMenu) {
+			userBtn.addEventListener('click', (e) => {
+				e.stopPropagation();
+				userMenu.classList.toggle('hidden');
+				contactMenu.classList.add('hidden');
 			});
 		}
+		if (contactBtn && contactMenu) {
+			contactBtn.addEventListener('click', (e) => {
+				e.stopPropagation();
+				contactMenu.classList.toggle('hidden');
+				userMenu.classList.add('hidden');
+			});
+		}
+		document.addEventListener('click', () => {
+			userMenu.classList.add('hidden');
+			contactMenu.classList.add('hidden');
+		});
 	});
 </script>
