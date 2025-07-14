@@ -2,7 +2,6 @@
 	<div class="flex items-center space-x-6">
 		<a href="/" class="text-xl font-bold text-[#6c63ff]">Estate Link</a>
 		<a href="/create-ad" class="text-gray-700 hover:text-green-600">Post Property</a>
-		<a href="/about" class="text-gray-700 hover:text-green-600">About Us</a>
 	</div>
 
 	<div class="flex items-center space-x-6 relative">
