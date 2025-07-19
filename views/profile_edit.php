@@ -18,8 +18,8 @@
 		<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 			<div>
 				<label class="block text-sm mb-1">Name</label>
-				<input type="text" name="name" required class="w-full border rounded px-3 py-2"
-					   value="<?= htmlspecialchars($dealer['name'] ?? '') ?>" />
+				<input type="text" name="user_name" required class="w-full border rounded px-3 py-2"
+					   value="<?= htmlspecialchars($dealer['user_name'] ?? '') ?>" />
 			</div>
 			<div>
 				<label class="block text-sm mb-1">Email (read-only)</label>
@@ -43,8 +43,8 @@
 			</div>
 			<div>
 				<label class="block text-sm mb-1">State</label>
-				<input type="text" name="state" class="w-full border rounded px-3 py-2"
-					   value="<?= htmlspecialchars($dealer['state'] ?? '') ?>" />
+				<input type="text" name="user_state" class="w-full border rounded px-3 py-2"
+					   value="<?= htmlspecialchars($dealer['user_state'] ?? '') ?>" />
 			</div>
 			<div>
 				<label class="block text-sm mb-1">Country</label>

@@ -8,7 +8,7 @@
 </head>
 <body class="bg-gray-100 text-gray-800 min-h-screen flex flex-col">
 
-<?php include __DIR__ . '/navbar.php'; ?>
+<?php include __DIR__ . '/navbar.php';  ?>
 
 <main>
 	<?= $content ?>
@@ -28,8 +28,15 @@
 		<!-- Right Side: Registration -->
 		<div class="w-1/2 bg-white p-10 flex flex-col justify-center">
 			<h2 class="text-2xl font-bold mb-6 text-[#6c63ff]">Create Account</h2>
+			<?php if (!empty($_SESSION['error_register'])): ?>
+				<div class="bg-red-100 text-red-700 p-2 rounded text-center mb-4">
+					<?= htmlspecialchars($_SESSION['error_register']) ?>
+				</div>
+				<?php unset($_SESSION['error_register']); ?>
+			<?php endif; ?>
+
 			<form id="registerForm" method="POST" action="/register" class="space-y-4">
-				<input type="text" name="name" placeholder="Full Name" required minlength="3"
+				<input type="text" name="user_name" placeholder="Full Name" required minlength="3"
 					   class="w-full border rounded px-3 py-2" />
 
 				<input type="email" name="email" placeholder="Email Address" required
@@ -64,6 +71,13 @@
 		</div>
 		<div class="w-1/2 bg-white p-10 flex flex-col justify-center">
 			<h2 class="text-2xl font-bold mb-6 text-[#6c63ff]">Login</h2>
+			<?php if (!empty($_SESSION['error_login'])): ?>
+				<div class="bg-red-100 text-red-700 p-2 rounded text-center mb-4">
+					<?= htmlspecialchars($_SESSION['error_login']) ?>
+				</div>
+				<?php unset($_SESSION['error_login']); ?>
+			<?php endif; ?>
+
 			<form method="POST" action="/login">
 				<input type="email" name="email" placeholder="Email Address" required class="w-full border rounded px-3 py-2 mb-4">
 				<input type="password" name="password" placeholder="Password" required class="w-full border rounded px-3 py-2 mb-4">

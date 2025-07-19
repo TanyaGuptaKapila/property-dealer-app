@@ -18,7 +18,7 @@ $app->addErrorMiddleware(true, true, true);
 
 // Inject PDO into container
 $container->set('pdo', require __DIR__ . '/../config/db.php');
-
+$app->addBodyParsingMiddleware();
 // Add Twig view if needed (optional)
 use Slim\Views\Twig;
 use Slim\Views\TwigMiddleware;

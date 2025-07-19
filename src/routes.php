@@ -35,7 +35,6 @@ $app->get('/about', function (ServerRequestInterface $request, ResponseInterface
 
 // Login (POST)
 $app->post('/login', function ($request, $response) {
-	session_start();
 	$params = (array)$request->getParsedBody();
 
 	$email = $params['email'] ?? '';
@@ -52,8 +51,12 @@ $app->post('/login', function ($request, $response) {
 		unset($_SESSION['form_data']);
 		$_SESSION['dealer'] = $user;
 		return $response->withHeader('Location', '/')->withStatus(302);
+	} else if ($user && !password_verify($password, $user['password'])) {
+		$_SESSION['error_login'] = 'Invalid email or password';
+		$_SESSION['show_modal'] = 'login';
+		return $response->withHeader('Location', '/')->withStatus(302);
 	} else {
-		$_SESSION['error'] = 'Invalid email or password';
+		$_SESSION['error_login'] = 'Please create an account';
 		$_SESSION['show_modal'] = 'login';
 		return $response->withHeader('Location', '/')->withStatus(302);
 	}
@@ -61,10 +64,9 @@ $app->post('/login', function ($request, $response) {
 
 // Register (POST)
 $app->post('/register', function (ServerRequestInterface $request, ResponseInterface $response) {
-	session_start();
 	$params = (array)$request->getParsedBody();
 
-	$name        = $params['name'] ?? '';
+	$name        = $params['user_name'] ?? '';
 	$email       = $params['email'] ?? '';
 	$passwordRaw = $params['password'] ?? '';
 	$phone       = $params['phone'] ?? '';
@@ -76,7 +78,7 @@ $app->post('/register', function (ServerRequestInterface $request, ResponseInter
 
 	// Validate phone
 	if (!preg_match('/^\+\d{10,15}$/', $phone)) {
-		$_SESSION['error'] = 'Phone must include country code, e.g., +919876543210';
+		$_SESSION['error_register'] = 'Phone must include country code, e.g., +919876543210';
 		$_SESSION['show_modal'] = 'register';
 		return $response->withHeader('Location', '/')->withStatus(302);
 	}
@@ -89,7 +91,7 @@ $app->post('/register', function (ServerRequestInterface $request, ResponseInter
 		!preg_match('/[0-9]/', $passwordRaw) ||
 		!preg_match('/[\W]/', $passwordRaw)
 	) {
-		$_SESSION['error'] = 'Password must be at least 8 characters and include uppercase, lowercase, number, and special character.';
+		$_SESSION['error_register'] = 'Password must be at least 8 characters and include uppercase, lowercase, number, and special character.';
 		$_SESSION['show_modal'] = 'register';
 		return $response->withHeader('Location', '/')->withStatus(302);
 	}
@@ -98,21 +100,37 @@ $app->post('/register', function (ServerRequestInterface $request, ResponseInter
 	$stmt = $pdo->prepare("SELECT id FROM dealers WHERE email = ?");
 	$stmt->execute([$email]);
 	if ($stmt->fetch()) {
-		$_SESSION['error'] = 'Email already registered';
+		$_SESSION['error_register'] = 'Email already registered';
 		$_SESSION['show_modal'] = 'register';
 		return $response->withHeader('Location', '/')->withStatus(302);
 	}
 
-	$password = password_hash($passwordRaw, PASSWORD_DEFAULT);
-	$stmt = $pdo->prepare("INSERT INTO dealers (name, email, password, phone, agency_name, location, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?)");
-	$stmt->execute([$name, $email, $password, $phone, $agency_name, $location, $created_at]);
+	// ✅ INSERT the user here
+	$passwordHashed = password_hash($passwordRaw, PASSWORD_DEFAULT);
 
-	$_SESSION['dealer'] = ['name' => $name, 'email' => $email];
+	$stmt = $pdo->prepare("
+		INSERT INTO dealers (user_name, email, password, phone, agency_name, location, created_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?)
+	");
+	$stmt->execute([
+		$name,
+		$email,
+		$passwordHashed,
+		$phone,
+		$agency_name,
+		$location,
+		$created_at
+	]);
+
+	// ✅ Fetch the user and log them in
+	$stmt = $pdo->prepare("SELECT * FROM dealers WHERE email = ?");
+	$stmt->execute([$email]);
+	$_SESSION['dealer'] = $stmt->fetch(PDO::FETCH_ASSOC);
 	unset($_SESSION['show_modal']);
 
 	return $response->withHeader('Location', '/')->withStatus(302);
 });
+
 
 // Logout
 $app->get('/logout', function (ServerRequestInterface $request, ResponseInterface $response) {
@@ -141,7 +159,6 @@ $app->get('/profile', function (ServerRequestInterface $request, ResponseInterfa
 });
 
 $app->post('/profile/password', function (ServerRequestInterface $request, ResponseInterface $response) {
-	session_start();
 	if (!isset($_SESSION['dealer'])) {
 		$_SESSION['show_modal'] = 'login';
 		return $response->withHeader('Location', '/')->withStatus(302);
@@ -196,7 +213,6 @@ $app->get('/profile/edit', function ($request, $response) {
 });
 
 $app->post('/profile/update', function ($request, $response) {
-	session_start();
 	if (!isset($_SESSION['dealer'])) {
 		$_SESSION['show_modal'] = 'login';
 		return $response->withHeader('Location', '/')->withStatus(302);
@@ -220,11 +236,11 @@ $app->post('/profile/update', function ($request, $response) {
 
 	$stmt = $pdo->prepare("
         UPDATE dealers SET 
-            name = ?, 
+            user_name = ?, 
             phone = ?, 
             agency_name = ?, 
             location = ?, 
-            state = ?, 
+            user_state = ?, 
             country = ?, 
             office_address = ?, 
             instagram_link = ?, 
@@ -235,11 +251,11 @@ $app->post('/profile/update', function ($request, $response) {
         WHERE id = ?
     ");
 	$stmt->execute([
-		$params['name'] ?? '',
+		$params['user_name'] ?? '',
 		$params['phone'] ?? '',
 		$params['agency_name'] ?? '',
 		$params['location'] ?? '',
-		$params['state'] ?? '',
+		$params['user_state'] ?? '',
 		$params['country'] ?? '',
 		$params['office_address'] ?? '',
 		$params['instagram_link'] ?? '',
@@ -260,17 +276,16 @@ $app->post('/profile/update', function ($request, $response) {
 });
 
 // Create Ad (GET)
-$app->get('/create-ad', function ($request, $response) {
+$app->get('/ad', function ($request, $response) {
 	if (!isset($_SESSION['dealer'])) {
 		$_SESSION['show_modal'] = 'login';
 		return $response->withHeader('Location', '/')->withStatus(302);
 	}
-	return render($response, 'create_ad');
+	return render($response, 'ad');
 });
 
 // Create Ad (POST)
-$app->post('/create-ad', function ($request, $response) {
-	session_start();
+$app->post('/ad', function ($request, $response) {
 	if (!isset($_SESSION['dealer'])) {
 		$_SESSION['show_modal'] = 'login';
 		return $response->withHeader('Location', '/')->withStatus(302);
@@ -280,109 +295,271 @@ $app->post('/create-ad', function ($request, $response) {
 	$files = $request->getUploadedFiles();
 	$dealerId = $_SESSION['dealer']['id'];
 
+	$propertyId = isset($params['property_id']) ? (int)$params['property_id'] : null;
+
 	$pdo = $this->get('pdo');
 	$pdo->beginTransaction();
 	try {
-		// Properties
-		$stmt = $pdo->prepare("INSERT INTO properties (dealer_id, transaction_type, property_type, availability, ownership, transaction_status, title, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-		$stmt->execute([
-			$dealerId,
-			$params['transaction_type'],
-			$params['property_type'],
-			$params['availability'],
-			$params['ownership'],
-			$params['transaction_status'] ?? 'Resale',
-			$params['title'],
-			$params['description']
-		]);
-		$propertyId = $pdo->lastInsertId();
+		if ($propertyId) {
+			$stmt = $pdo->prepare("UPDATE properties SET transaction_type = ?, property_type = ?, ownership = ?, transaction_status = ?, title = ?, description = ?, construction_status = ?, property_category = ?, rera_approved = ? WHERE id = ?");
+			$stmt->execute([
+				$params['transaction_type'],
+				$params['property_type'],
+				$params['ownership'],
+				$params['transaction_status'] ?? 'Resale',
+				$params['title'],
+				$params['description'],
+				$params['construction_status'],
+				$params['property_category'],
+				isset($params['rera_approved']) ? 1 : 0,
+				$propertyId
+			]);
 
-		// Location
-		$stmt = $pdo->prepare("INSERT INTO property_location (property_id, city, locality, sub_locality, apartment_society, house_no) VALUES (?, ?, ?, ?, ?, ?)");
-		$stmt->execute([
-			$propertyId,
-			$params['city'],
-			$params['locality'],
-			$params['sub_locality'],
-			$params['apartment_society'],
-			$params['house_no']
-		]);
+			$stmt = $pdo->prepare("UPDATE property_location SET city = ?, locality = ?, sub_locality = ?, apartment_society = ?, house_no = ? WHERE property_id = ?");
+			$stmt->execute([
+				$params['city'],
+				$params['locality'],
+				$params['sub_locality'],
+				$params['apartment_society'],
+				$params['house_no'],
+				$propertyId
+			]);
 
-		// Area
-		$stmt = $pdo->prepare("INSERT INTO property_area_details (property_id, carpet_area, builtup_area, super_builtup_area, area_unit) VALUES (?, ?, ?, ?, ?)");
-		$stmt->execute([
-			$propertyId,
-			$params['carpet_area'],
-			$params['builtup_area'],
-			$params['super_builtup_area'],
-			$params['area_unit']
-		]);
+			$stmt = $pdo->prepare("UPDATE property_area_details SET carpet_area = ?, builtup_area = ?, super_builtup_area = ?, area_unit = ? WHERE property_id = ?");
+			$stmt->execute([
+				$params['carpet_area'],
+				$params['builtup_area'],
+				$params['super_builtup_area'],
+				$params['area_unit'],
+				$propertyId
+			]);
 
-		// Rooms
-		$stmt = $pdo->prepare("INSERT INTO property_room_details (property_id, bedrooms, bathrooms, balconies, furnishing, parking, facing, open_sides) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-		$stmt->execute([
-			$propertyId,
-			$params['bedrooms'],
-			$params['bathrooms'],
-			$params['balconies'],
-			$params['furnishing'],
-			$params['parking'],
-			$params['facing'],
-			$params['open_sides']
-		]);
+			$stmt = $pdo->prepare("UPDATE property_room_details SET bedrooms = ?, bathrooms = ?, balconies = ?, furnishing = ?, parking = ?, facing = ?, open_sides = ? WHERE property_id = ?");
+			$stmt->execute([
+				$params['bedrooms'],
+				$params['bathrooms'],
+				$params['balconies'],
+				$params['furnishing'],
+				$params['parking'],
+				$params['facing'],
+				$params['open_sides'],
+				$propertyId
+			]);
 
-		// Floors
-		$stmt = $pdo->prepare("INSERT INTO property_floor_details (property_id, total_floors, property_on_floor) VALUES (?, ?, ?)");
-		$stmt->execute([
-			$propertyId,
-			$params['total_floors'],
-			$params['property_on_floor']
-		]);
+			$stmt = $pdo->prepare("UPDATE property_floor_details SET total_floors = ?, property_on_floor = ? WHERE property_id = ?");
+			$stmt->execute([
+				$params['total_floors'],
+				$params['property_on_floor'],
+				$propertyId
+			]);
 
-		// Pricing
-		$stmt = $pdo->prepare("INSERT INTO property_pricing_details (property_id, expected_price, price_per_sqft, price_in_words, is_inclusive_price, tax_excluded, price_negotiable, additional_pricing) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-		$stmt->execute([
-			$propertyId,
-			$params['expected_price'],
-			$params['price_per_sqft'],
-			$params['price_in_words'],
-			isset($params['is_inclusive_price']) ? 1 : 0,
-			isset($params['tax_excluded']) ? 1 : 0,
-			isset($params['price_negotiable']) ? 1 : 0,
-			json_encode([
-				'maintenance' => $params['maintenance'] ?? null,
-				'expected_rental' => $params['expected_rental'] ?? null,
-				'booking_amount' => $params['booking_amount'] ?? null
-			])
-		]);
+			$stmt = $pdo->prepare("UPDATE property_pricing_details SET expected_price = ?, price_per_sqft = ?, price_in_words = ?, is_inclusive_price = ?, price_negotiable = ?, additional_pricing = ? WHERE property_id = ?");
+			$stmt->execute([
+				$params['expected_price'],
+				$params['price_per_sqft'],
+				$params['price_in_words'],
+				isset($params['is_inclusive_price']) ? 1 : 0,
+				isset($params['price_negotiable']) ? 1 : 0,
+				$params['additional_pricing'] ?? null,
+				$propertyId
+			]);
 
-		// Features
-		$stmt = $pdo->prepare("INSERT INTO property_features (property_id, feature, authority_approved, possession) VALUES (?, ?, ?, ?)");
-		$stmt->execute([
-			$propertyId,
-			$params['feature'],
-			$params['authority_approved'],
-			$params['possession']
-		]);
+			$stmt = $pdo->prepare("UPDATE property_features SET amenities = ? WHERE property_id = ?");
+			$stmt->execute([
+				isset($params['amenities']) ? json_encode($params['amenities']) : json_encode([]),
+				$propertyId
+			]);
 
-		// Media
-		if (!empty($files['media']) && is_array($files['media'])) {
-			foreach ($files['media'] as $uploadedFile) {
-				if ($uploadedFile->getError() === UPLOAD_ERR_OK) {
-					$filename = uniqid() . '_' . $uploadedFile->getClientFilename();
-					$uploadedFile->moveTo(__DIR__ . '/../public/uploads/' . $filename);
-					$pdo->prepare("INSERT INTO property_media (property_id, media_type, file_path) VALUES (?, ?, ?)")
-						->execute([$propertyId, explode('/', $uploadedFile->getClientMediaType())[0], '/uploads/' . $filename]);
+			$pdo->prepare("DELETE FROM property_societies WHERE property_id = ?")->execute([$propertyId]);
+			if (!empty($params['society']) && is_array($params['society'])) {
+				foreach ($params['society'] as $societyName) {
+					$pdo->prepare("INSERT INTO property_societies (property_id, society_name) VALUES (?, ?)")
+						->execute([$propertyId, $societyName]);
+				}
+			}
+		} else {
+			$stmt = $pdo->prepare( "INSERT INTO properties (dealer_id, transaction_type, property_type, ownership, transaction_status, title, description, construction_status, property_category, rera_approved) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)" );
+			$stmt->execute( [
+				$dealerId,
+				$params[ 'transaction_type' ],
+				$params[ 'property_type' ],
+				$params[ 'ownership' ],
+				$params[ 'transaction_status' ] ?? 'Resale',
+				$params[ 'title' ],
+				$params[ 'description' ],
+				$params[ 'construction_status' ],
+				$params[ 'property_category' ],
+				isset( $params[ 'rera_approved' ] ) ? 1 : 0
+			] );
+			$propertyId = $pdo->lastInsertId();
+
+			$stmt = $pdo->prepare( "INSERT INTO property_location (property_id, city, locality, sub_locality, apartment_society, house_no) VALUES (?, ?, ?, ?, ?, ?)" );
+			$stmt->execute( [
+				$propertyId,
+				$params[ 'city' ],
+				$params[ 'locality' ],
+				$params[ 'sub_locality' ],
+				$params[ 'apartment_society' ],
+				$params[ 'house_no' ]
+			] );
+
+			$stmt = $pdo->prepare( "INSERT INTO property_area_details (property_id, carpet_area, builtup_area, super_builtup_area, area_unit) VALUES (?, ?, ?, ?, ?)" );
+			$stmt->execute( [
+				$propertyId,
+				$params[ 'carpet_area' ],
+				$params[ 'builtup_area' ],
+				$params[ 'super_builtup_area' ],
+				$params[ 'area_unit' ]
+			] );
+
+			$stmt = $pdo->prepare( "INSERT INTO property_room_details (property_id, bedrooms, bathrooms, balconies, furnishing, parking, facing, open_sides) VALUES (?, ?, ?, ?, ?, ?, ?, ?)" );
+			$stmt->execute( [
+				$propertyId,
+				$params[ 'bedrooms' ],
+				$params[ 'bathrooms' ],
+				$params[ 'balconies' ],
+				$params[ 'furnishing' ],
+				$params[ 'parking' ],
+				$params[ 'facing' ],
+				$params[ 'open_sides' ]
+			] );
+
+			$stmt = $pdo->prepare( "INSERT INTO property_floor_details (property_id, total_floors, property_on_floor) VALUES (?, ?, ?)" );
+			$stmt->execute( [
+				$propertyId,
+				$params[ 'total_floors' ],
+				$params[ 'property_on_floor' ]
+			] );
+
+			$stmt = $pdo->prepare( "INSERT INTO property_pricing_details (property_id, expected_price, price_per_sqft, price_in_words, is_inclusive_price, price_negotiable, additional_pricing) VALUES (?, ?, ?, ?, ?, ?, ?)" );
+			$stmt->execute( [
+				$propertyId,
+				$params[ 'expected_price' ],
+				$params[ 'price_per_sqft' ],
+				$params[ 'price_in_words' ],
+				isset( $params[ 'is_inclusive_price' ] ) ? 1 : 0,
+				isset( $params[ 'price_negotiable' ] ) ? 1 : 0,
+				$params[ 'additional_pricing' ] ?? null
+			] );
+
+			$stmt = $pdo->prepare( "INSERT INTO property_features (property_id, amenities) VALUES (?, ?)" );
+			$stmt->execute( [
+				$propertyId,
+				isset( $params[ 'amenities' ] ) ? json_encode( $params[ 'amenities' ] ) : json_encode( [] )
+			] );
+
+			if( !empty( $params[ 'society' ] ) && is_array( $params[ 'society' ] ) ) {
+				foreach( $params[ 'society' ] as $societyName ) {
+					$pdo->prepare( "INSERT INTO property_societies (property_id, society_name) VALUES (?, ?)" )
+						->execute( [ $propertyId, $societyName ] );
 				}
 			}
 		}
 
+		$mediaFiles = $files['media'] ?? [];
+
+		if (!is_array($mediaFiles)) {
+			$mediaFiles = [$mediaFiles]; // wrap single file as array
+		}
+
+		foreach ($mediaFiles as $uploadedFile) {
+			if ($uploadedFile instanceof \Slim\Psr7\UploadedFile && $uploadedFile->getError() === UPLOAD_ERR_OK) {
+				$filename = uniqid() . '_' . $uploadedFile->getClientFilename();
+				$uploadedFile->moveTo(__DIR__ . '/../public/uploads/' . $filename);
+				$mediaType = strpos($uploadedFile->getClientMediaType(), 'image') !== false ? 'image' : 'video';
+				$pdo->prepare("INSERT INTO property_media (property_id, media_type, file_path) VALUES (?, ?, ?)")
+					->execute([$propertyId, $mediaType, '/uploads/' . $filename]);
+			}
+		}
+
 		$pdo->commit();
-		$_SESSION['success'] = 'Property added successfully';
+
+		$_SESSION['success'] = $propertyId ? 'Property updated successfully' : 'Property added successfully';
+
+		if ($propertyId) {
+			return $response->withHeader('Location', '/edit-property?id=' . $propertyId)->withStatus(302);
+		}
 		return $response->withHeader('Location', '/ads')->withStatus(302);
-    } catch (Exception $e) {
-        $pdo->rollBack();
-        $_SESSION['error'] = 'Failed to create property.';
-        return $response->withHeader('Location', '/create-ad')->withStatus(302);
-    }
+
+	} catch (Exception $e) {
+		$pdo->rollBack();
+		$_SESSION['error'] = 'Failed to create property.';
+		return $response->withHeader('Location', '/ad')->withStatus(302);
+	}
+});
+
+$app->get('/my-properties', function ($request, $response) {
+	if (!isset($_SESSION['dealer'])) {
+		$_SESSION['show_modal'] = 'login';
+		return $response->withHeader('Location', '/')->withStatus(302);
+	}
+
+	$dealerId = $_SESSION['dealer']['id'];
+	$pdo = $this->get('pdo');
+
+	$stmt = $pdo->prepare("SELECT * FROM properties WHERE dealer_id = ? AND deleted_at IS NULL");
+	$stmt->execute([$dealerId]);
+	$properties = $stmt->fetchAll();
+
+	return render($response, 'my-properties', ['properties' => $properties]);
+});
+
+$app->get('/edit-property', function ($request, $response) {
+	if (!isset($_SESSION['dealer'])) {
+		$_SESSION['show_modal'] = 'login';
+		return $response->withHeader('Location', '/')->withStatus(302);
+	}
+
+	$pdo = $this->get('pdo');
+	$dealerId = $_SESSION['dealer']['id'];
+	$propertyId = (int)$request->getQueryParams()['id'];
+
+	$stmt = $pdo->prepare("SELECT * FROM properties WHERE id = ? AND dealer_id = ? AND deleted_at IS NULL");
+	$stmt->execute([$propertyId, $dealerId]);
+	$property = $stmt->fetch(PDO::FETCH_ASSOC);
+
+	if (!$property) {
+		$_SESSION['error'] = 'Property not found.';
+		return $response->withHeader('Location', '/my-properties')->withStatus(302);
+	}
+
+	// Fetch additional details
+	$areaDetails     = $pdo->query("SELECT * FROM property_area_details WHERE property_id = $propertyId")->fetch(PDO::FETCH_ASSOC);
+	$selectedAmenities = $pdo->query("SELECT * FROM property_features WHERE property_id = $propertyId")->fetch(PDO::FETCH_ASSOC);
+	$features = isset($selectedAmenities['amenities']) ? json_decode($selectedAmenities['amenities'], true) : [];
+	$location= $pdo->query("SELECT * FROM property_location WHERE property_id = $propertyId")->fetch(PDO::FETCH_ASSOC);
+	$pricingDetails     = $pdo->query("SELECT * FROM property_pricing_details WHERE property_id = $propertyId")->fetch(PDO::FETCH_ASSOC);
+	$societies    = $pdo->query("SELECT society_name FROM property_societies WHERE property_id = $propertyId")->fetchAll(PDO::FETCH_COLUMN);
+	$roomDetails = $pdo->query("SELECT * FROM property_room_details WHERE property_id = $propertyId")->fetch(PDO::FETCH_ASSOC);
+	$floorDetails = $pdo->query("SELECT * FROM property_floor_details WHERE property_id = $propertyId")->fetch(PDO::FETCH_ASSOC);
+	$propertyMedia = $pdo->query("SELECT * FROM property_media WHERE property_id = $propertyId")->fetchAll(PDO::FETCH_ASSOC);
+
+	return render($response, 'ad', [
+		'property'   => $property,
+		'location'   => $location,
+		'area'       => $areaDetails,
+		'room'       => $roomDetails,
+		'floor'      => $floorDetails,
+		'pricing'    => $pricingDetails,
+		'features'   => $features,
+		'societies'  => $societies,
+		'media'  	 => $propertyMedia,
+	]);
+});
+
+$app->get('/delete-property', function ($request, $response) {
+	if (!isset($_SESSION['dealer'])) {
+		$_SESSION['show_modal'] = 'login';
+		return $response->withHeader('Location', '/')->withStatus(302);
+	}
+
+	$pdo = $this->get('pdo');
+	$dealerId = $_SESSION['dealer']['id'];
+	$propertyId = (int)$request->getQueryParams()['id'];
+
+	$stmt = $pdo->prepare("UPDATE properties SET deleted_at = NOW() WHERE id = ? AND dealer_id = ? ");
+	$stmt->execute([$propertyId, $dealerId]);
+
+	$_SESSION['success'] = 'Property deleted successfully';
+	return $response->withHeader('Location', '/my-properties')->withStatus(302);
 });

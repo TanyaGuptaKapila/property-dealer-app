@@ -20,7 +20,7 @@
 		</div>
 		<div class="md:w-2/3 p-8">
 			<h2 class="text-2xl font-bold text-gray-800 mb-4">Details</h2>
-			<p class="text-gray-600 mb-2"><strong>Name:</strong> <?= htmlspecialchars($dealer['name'] ?? '') ?></p>
+			<p class="text-gray-600 mb-2"><strong>Name:</strong> <?= htmlspecialchars($dealer['user_name'] ?? '') ?></p>
 			<p class="text-gray-600 mb-2"><strong>Email:</strong> <?= htmlspecialchars($dealer['email'] ?? '') ?></p>
 			<a href="/profile/edit" class="mt-4 inline-block bg-[#6c63ff] text-white px-6 py-2 rounded hover:bg-[#5a55e5]">
 				Edit Profile

@@ -9,7 +9,6 @@
     }
 </style>
 
-
 <section class="relative bg-gradient-to-r from-green-50 to-green-100">
 	<div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between px-6 py-16">
 		<div class="md:w-1/2">
@@ -20,7 +19,7 @@
 				Connect with verified dealers. Explore homes, plots, and commercial spaces across India.
 			</p>
 			<div class="mt-6">
-				<a href="/create-ad" class="mt-10 bg-green-500 hover:bg-green-600 text-white font-medium py-3 px-8 rounded">
+				<a href="/ad" class="mt-10 bg-green-500 hover:bg-green-600 text-white font-medium py-3 px-8 rounded">
 					Post Your Property Today
 				</a>
 			</div>
@@ -30,6 +29,7 @@
 		</div>
 	</div>
 </section>
+
 <section class="mt-20 max-w-6xl mx-auto text-center">
 	<h2 class="text-3xl font-bold mb-6">Explore Popular Locations</h2>
 	<p class="text-gray-500 mb-12">Find properties in the most sought-after cities and neighborhoods.</p>
@@ -53,6 +53,51 @@
 			<img src="/assets/delhi.jpg" alt="Location" class="rounded mb-3">
 			<h4 class="font-medium">Delhi</h4>
 			<p class="text-sm text-gray-500">1100+ Listings</p>
+		</div>
+	</div>
+</section>
+
+<section class="relative py-20 border-t border-b border-gray-200">
+	<div class="max-w-7xl mx-auto grid md:grid-cols-2 items-center gap-12 px-8">
+		<!-- Left: Text & Search Form -->
+		<!-- Right: Modern Illustration -->
+		<div class="flex justify-center">
+			<img src="/assets/undraw_buy-house_an72.svg"
+				 alt="Search Properties Illustration"
+				 class="w-full max-w-md float-animation">
+		</div>
+		<div>
+			<h2 class="text-4xl font-bold text-gray-800 mb-6 leading-tight">
+				Find Your Perfect Property <span class="text-green-500">Fast</span>
+			</h2>
+			<p class="text-gray-600 mb-10">Search residential, commercial, and investment properties in your desired location effortlessly.</p>
+
+			<form action="/ads" method="GET" class="bg-gray-50 p-6 rounded-lg shadow-md space-y-4">
+				<input type="text" name="q" placeholder="City, Locality, or Project Name"
+					   class="w-full border border-gray-300 p-4 rounded-md focus:outline-none focus:ring-2 focus:ring-green-400" />
+
+				<div class="flex flex-col md:flex-row gap-4">
+					<select name="transaction_type" class="w-full border border-gray-300 p-4 rounded-md">
+						<option value="">Transaction Type</option>
+						<option>Sell</option>
+						<option>Rent/Lease</option>
+						<option>PG</option>
+					</select>
+
+					<select name="property_type" class="w-full border border-gray-300 p-4 rounded-md">
+						<option value="">Property Type</option>
+						<option>Apartment</option>
+						<option>Villa</option>
+						<option>Plot</option>
+						<option>Commercial</option>
+					</select>
+				</div>
+
+				<button type="submit"
+						class="w-full md:w-auto bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-md shadow-md">
+					🔍 Search Properties
+				</button>
+			</form>
 		</div>
 	</div>
 </section>
@@ -106,7 +151,7 @@
 
 		</div>
 
-		<a href="/create-ad" class="mt-10 bg-green-500 hover:bg-green-600 text-white font-medium py-3 px-8 rounded">
+		<a href="/ad" class="mt-10 bg-green-500 hover:bg-green-600 text-white font-medium py-3 px-8 rounded">
 			Post Your Property Today
 		</a>
 

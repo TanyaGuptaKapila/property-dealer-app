@@ -1,7 +1,10 @@
 <nav class="bg-white shadow p-4 flex justify-between items-center">
 	<div class="flex items-center space-x-6">
 		<a href="/" class="text-xl font-bold text-[#6c63ff]">Estate Link</a>
-		<a href="/create-ad" class="text-gray-700 hover:text-green-600">Post Property</a>
+		<a href="/ad" class="text-gray-700 hover:text-green-600">Post Property</a>
+		<?php if (!empty($_SESSION['dealer'])): ?>
+			<a href="/my-properties" class="text-gray-700 hover:text-green-600">My Properties</a>
+		<?php endif; ?>
 	</div>
 
 	<div class="flex items-center space-x-6 relative">
